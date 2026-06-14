@@ -2,20 +2,57 @@
 import streamlit as st
 from logic_utils import get_range_for_difficulty, parse_guess, check_guess, update_score
 
-st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮")
+st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮", layout="wide")
 
-# Small UI polish: background gradient and header style to feel less "AI-generated"
-st.markdown(
-    """
-    <style>
-    .stApp { background: linear-gradient(135deg,#f8f9fa,#eef2ff); }
-    .header { font-weight:700; letter-spacing:0.5px; }
-    .summary-card { border-radius:16px; padding:16px; background:rgba(255,255,255,0.92); box-shadow:0 14px 28px rgba(0,0,0,0.08); margin-bottom:16px; }
-    .summary-card strong { color:#0f172a; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+# Theme selection (sidebar)
+theme_choice = st.sidebar.radio("Theme", ["Dark", "Light"], index=0)
+show_dev = st.sidebar.checkbox("Show developer debug info", value=False)
+
+# Color palettes for themes
+if theme_choice == "Dark":
+    BG = "#0b1020"
+    SURFACE = "#0f1724"
+    CARD = "#0f172a"
+    TEXT = "#e6eef8"
+    MUTED = "#94a3b8"
+    ACCENT_A = "#7c3aed"
+    ACCENT_B = "#06b6d4"
+else:
+    BG = "#f6f8ff"
+    SURFACE = "#ffffff"
+    CARD = "#ffffff"
+    TEXT = "#0f172a"
+    MUTED = "#475569"
+    ACCENT_A = "#6366f1"
+    ACCENT_B = "#06b6d4"
+
+st.markdown(f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+html, body, .stApp {{ font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background: {BG}; color: {TEXT}; }}
+.stApp {{ min-height: 100vh; }}
+.block-container {{ padding-top: 0rem; padding-right: 2rem; padding-left: 2rem; padding-bottom: 2rem; }}
+.game-container {{ max-width:960px; margin:28px auto; padding:0; }}
+.game-header {{ display:flex; align-items:center; justify-content:space-between; gap:18px; }}
+.hero {{ background: rgba(255,255,255,0.04); border-radius:14px; padding:22px; box-shadow: 0 14px 40px rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08); }}
+.title {{ font-size:24px; font-weight:600; margin:0; color:{TEXT}; }}
+.tagline {{ color:{MUTED}; margin-top:6px; font-weight:300; }}
+.summary-card {{ border-radius:12px; padding:18px; background: rgba(255,255,255,0.05); box-shadow:0 12px 28px rgba(0,0,0,0.24); margin-bottom:16px; color:{TEXT}; }}
+.stButton>button {{ background: linear-gradient(90deg,{ACCENT_A},{ACCENT_B}); color:#fff; border:none; padding:12px 16px; border-radius:12px; box-shadow: 0 8px 24px rgba(12,18,33,0.12); }}
+.stButton>button:hover {{ transform: translateY(-1px); }}
+.stTextInput>div>input {{ border-radius:12px; padding:14px; border:1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.05); color:{TEXT}; }}
+.stTextInput>div>label {{ color:{TEXT}; }}
+.stTextInput>div>div>span {{ color:{MUTED}; }}
+.stMetric {{ color:{TEXT}; }}
+.stMetric>div>div:first-child {{ color:{TEXT}; }}
+.metrics-card {{ background: rgba(255,255,255,0.05); border-radius:12px; padding:16px; box-shadow:0 10px 24px rgba(0,0,0,0.22); color:{TEXT}; }}
+.stSidebar {{ background: {SURFACE}; color:{TEXT}; border-right:1px solid rgba(255,255,255,0.08); }}
+.stSidebar .css-1d391kg {{ color:{TEXT}; }}
+.stSelectbox>div>div>div>div {{ background: {SURFACE}; color:{TEXT}; }}
+.stCheckbox>div>label {{ color:{TEXT}; }}
+footer, .css-16huue1 {{ visibility: hidden; }}
+</style>
+""", unsafe_allow_html=True)
 
 
 def render_session_summary(history):
@@ -29,8 +66,19 @@ def render_session_summary(history):
     except Exception:
         st.write(history)
 
-st.title("🎮 Game Glitch Investigator", anchor=False)
-st.markdown("<div class='header'>A playful, modern UI for the Number Guessing Game.</div>", unsafe_allow_html=True)
+st.markdown("""
+<div class="game-container">
+    <div class="game-header hero">
+        <div>
+            <h1 class="title">Game Glitch Investigator</h1>
+            <div class="tagline">A refined number-guessing challenge with clear feedback.</div>
+        </div>
+        <div style="text-align:right; min-width:140px;">
+            <div style="font-size:12px; color:var(--muted); margin-top:6px;">Focused. Minimal. Playful in spirit.</div>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 st.sidebar.header("Settings")
 
@@ -74,23 +122,24 @@ metrics_col1, metrics_col2 = st.columns(2)
 metrics_col1.metric("Attempts Left", attempt_limit - st.session_state.attempts)
 metrics_col2.metric("Score", st.session_state.score)
 
-with st.expander("Developer Debug Info"):
-    st.write("Secret:", st.session_state.secret)
-    st.write("Attempts:", st.session_state.attempts)
-    st.write("Score:", st.session_state.score)
-    st.write("Difficulty:", difficulty)
-    st.write("History:", st.session_state.history)
+if show_dev:
+    with st.expander("Developer Debug Info"):
+        st.write("Secret:", st.session_state.secret)
+        st.write("Attempts:", st.session_state.attempts)
+        st.write("Score:", st.session_state.score)
+        st.write("Difficulty:", difficulty)
+        st.write("History:", st.session_state.history)
 
 with st.form("guess_form"):
     raw_guess = st.text_input(
         "Enter your guess:",
         key=f"guess_input_{difficulty}"
     )
-    submit = st.form_submit_button("Submit Guess 🚀")
+    submit = st.form_submit_button("Submit")
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    new_game = st.button("New Game 🔁")
+    new_game = st.button("New Game")
 with col2:
     show_hint = st.checkbox("Show hint", value=True)
 
@@ -141,20 +190,18 @@ if submit:
         )
 
         if outcome == "Win":
-            st.balloons()
             st.session_state.status = "won"
             st.success(
                 f"You won! The secret was {st.session_state.secret}. "
                 f"Final score: {st.session_state.score}"
             )
-        else:
-            if st.session_state.attempts >= attempt_limit:
-                st.session_state.status = "lost"
-                st.error(
-                    f"Out of attempts! "
-                    f"The secret was {st.session_state.secret}. "
-                    f"Score: {st.session_state.score}"
-                )
+        elif st.session_state.attempts >= attempt_limit:
+            st.session_state.status = "lost"
+            st.error(
+                f"Out of attempts! "
+                f"The secret was {st.session_state.secret}. "
+                f"Score: {st.session_state.score}"
+            )
 
         if st.session_state.history:
             st.markdown("<div class='summary-card'>", unsafe_allow_html=True)
@@ -167,4 +214,3 @@ if submit:
             render_session_summary(st.session_state.history)
 
 st.divider()
-st.caption("Built by an AI that claims this code is production-ready.")
