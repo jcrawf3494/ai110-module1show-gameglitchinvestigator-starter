@@ -1,11 +1,36 @@
 ﻿import random
 import streamlit as st
-from logic_utils import get_range_for_difficulty, parse_guess, check_guess, get_hint_message, update_score
+from logic_utils import get_range_for_difficulty, parse_guess, check_guess, update_score
 
 st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮")
 
-st.title("🎮 Game Glitch Investigator")
-st.caption("An AI-generated guessing game. Something is off.")
+# Small UI polish: background gradient and header style to feel less "AI-generated"
+st.markdown(
+    """
+    <style>
+    .stApp { background: linear-gradient(135deg,#f8f9fa,#eef2ff); }
+    .header { font-weight:700; letter-spacing:0.5px; }
+    .summary-card { border-radius:16px; padding:16px; background:rgba(255,255,255,0.92); box-shadow:0 14px 28px rgba(0,0,0,0.08); margin-bottom:16px; }
+    .summary-card strong { color:#0f172a; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+def render_session_summary(history):
+    if not history:
+        return
+    st.markdown("### Session Summary")
+    try:
+        import pandas as _pd
+        df = _pd.DataFrame(history, columns=["Guess", "Outcome"])
+        st.table(df)
+    except Exception:
+        st.write(history)
+
+st.title("🎮 Game Glitch Investigator", anchor=False)
+st.markdown("<div class='header'>A playful, modern UI for the Number Guessing Game.</div>", unsafe_allow_html=True)
 
 st.sidebar.header("Settings")
 
@@ -44,10 +69,10 @@ if "history" not in st.session_state:
 
 st.subheader("Make a guess")
 
-st.info(
-    f"Guess a number between 1 and 100. "
-    f"Attempts left: {attempt_limit - st.session_state.attempts}"
-)
+# Top-line metrics for a cleaner UI
+metrics_col1, metrics_col2 = st.columns(2)
+metrics_col1.metric("Attempts Left", attempt_limit - st.session_state.attempts)
+metrics_col2.metric("Score", st.session_state.score)
 
 with st.expander("Developer Debug Info"):
     st.write("Secret:", st.session_state.secret)
@@ -89,20 +114,25 @@ if submit:
     ok, guess_int, err = parse_guess(raw_guess, low, high)
 
     if not ok:
-        st.session_state.history.append(raw_guess)
+        st.session_state.history.append((raw_guess, "Invalid"))
         st.error(err)
     else:
-        st.session_state.history.append(guess_int)
+        st.session_state.history.append((guess_int, None))
 
-        if st.session_state.attempts % 2 == 0:
-            secret = str(st.session_state.secret)
-        else:
-            secret = st.session_state.secret
-
+        secret = st.session_state.secret
         outcome, message = check_guess(guess_int, secret)
 
+        # update the last history entry with the outcome
+        st.session_state.history[-1] = (guess_int, outcome)
+
+        # Color-coded, user-friendly hint output
         if show_hint:
-            st.warning(message)
+            if outcome == "Win":
+                st.success(message)
+            elif outcome == "Too High":
+                st.error(message)
+            else:
+                st.info(message)
 
         st.session_state.score = update_score(
             current_score=st.session_state.score,
@@ -125,6 +155,16 @@ if submit:
                     f"The secret was {st.session_state.secret}. "
                     f"Score: {st.session_state.score}"
                 )
+
+        if st.session_state.history:
+            st.markdown("<div class='summary-card'>", unsafe_allow_html=True)
+            st.markdown(f"**Last guess:** {raw_guess}")
+            if ok:
+                st.markdown(f"**Outcome:** {outcome}")
+            st.markdown(f"**Attempt:** {st.session_state.attempts}/{attempt_limit}")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            render_session_summary(st.session_state.history)
 
 st.divider()
 st.caption("Built by an AI that claims this code is production-ready.")
